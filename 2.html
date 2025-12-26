@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股指期货基差监控系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #1e6fff;
+            color: white;
+            padding: 16px 24px;
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .update-info {
+            font-size: 14px;
+            font-weight: normal;
+            opacity: 0.8;
+        }
+
+        /* 选项卡样式 */
+        .tabs {
+            display: flex;
+            background-color: #f0f5ff;
+            border-bottom: 1px solid #e5e9f2;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .tab:hover {
+            background-color: #e6f0ff;
+        }
+
+        .tab.active {
+            border-bottom-color: #1e6fff;
+            color: #1e6fff;
+            background-color: white;
+        }
+
+        /* 表格样式 */
+        .table-container {
+            padding: 24px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1000px;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: right;
+            border: 1px solid #e5e9f2;
+        }
+
+        th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #334155;
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            color: #475569;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        tr:hover {
+            background-color: #f0f7ff;
+        }
+
+        .contract {
+            text-align: left;
+            font-weight: 500;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .tab {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+
+            .table-container {
+                padding: 16px;
+            }
+
+            th, td {
+                padding: 8px 10px;
+                font-size: 14px;
+            }
+
+            .update-info {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            股指期货基差实时监控
+            <div class="update-info" id="update-time">最后更新：${new Date().toLocaleString()}</div>
+        </div>
+        <!-- 选项卡区域 -->
+        <div class="tabs" tabindex="0">
+            <div class="tab active" data-index="0" tabindex="0">上证50 (IH)</div>
+            <div class="tab" data-index="1" tabindex="0">沪深300 (IF)</div>
+            <div class="tab" data-index="2" tabindex="0">中证500 (IC)</div>
+            <div class="tab" data-index="3" tabindex="0">中证1000 (IM)</div>
+        </div>
+        <!-- 表格区域 -->
+        <div class="table-container">
+            <table id="basis-table">
+                <thead>
+                    <tr>
+                        <th class="contract">合约</th>
+                        <th>价格</th>
+                        <th>涨跌</th>
+                        <th>未平仓量</th>
+                        <th>成交量</th>
+                        <th>剩余天数</th>
+                        <th>基差变化</th>
+                        <th>基差</th>
+                        <th>年化基差(%)</th>
+                        <th>日平均折价</th>
+                        <th>年化每点折</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 数据会通过JS动态渲染 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ========== 核心修改：设置自动更新间隔（毫秒） ==========
+        // 30秒 = 30000毫秒，1分钟=60000毫秒，5分钟=300000毫秒
+        const AUTO_UPDATE_INTERVAL = 30000; // 建议设置30秒以上，避免频繁请求
+        // ======================================================
+
+        // 模拟四大指数的基差数据（实际使用时替换为真实接口请求）
+        const basisData = [
+            // 上证50 (IH)
+            [
+                { contract: "IH2601", price: 2356.8 + Math.random()*10, change: +12.5 + (Math.random()-0.5)*5, openInterest: 85420 + Math.floor(Math.random()*1000), volume: 42580 + Math.floor(Math.random()*1000), daysLeft: 18, basisChange: +2.3 + (Math.random()-0.5)*2, basis: 15.6 + (Math.random()-0.5)*3, annualBasis: 1.25 + (Math.random()-0.5)*0.1, dailyDiscount: 0.87 + (Math.random()-0.5)*0.1, annualPointDiscount: 32.5 + (Math.random()-0.5)*2 },
+                { contract: "IH2602", price: 2368.2 + Math.random()*10, change: +10.8 + (Math.random()-0.5)*5, openInterest: 62150 + Math.floor(Math.random()*1000), volume: 28450 + Math.floor(Math.random()*1000), daysLeft: 46, basisChange: +1.8 + (Math.random()-0.5)*2, basis: 18.9 + (Math.random()-0.5)*3, annualBasis: 1.18 + (Math.random()-0.5)*0.1, dailyDiscount: 0.41 + (Math.random()-0.5)*0.1, annualPointDiscount: 29.8 + (Math.random()-0.5)*2 },
+                { contract: "IH2603", price: 2375.5 + Math.random()*10, change: +8.3 + (Math.random()-0.5)*5, openInterest: 48720 + Math.floor(Math.random()*1000), volume: 19630 + Math.floor(Math.random()*1000), daysLeft: 74, basisChange: +1.5 + (Math.random()-0.5)*2, basis: 21.2 + (Math.random()-0.5)*3, annualBasis: 1.05 + (Math.random()-0.5)*0.1, dailyDiscount: 0.29 + (Math.random()-0.5)*0.1, annualPointDiscount: 27.6 + (Math.random()-0.5)*2 },
+                { contract: "IH2606", price: 2389.7 + Math.random()*10, change: +5.6 + (Math.random()-0.5)*5, openInterest: 32180 + Math.floor(Math.random()*1000), volume: 10560 + Math.floor(Math.random()*1000), daysLeft: 166, basisChange: +1.2 + (Math.random()-0.5)*2, basis: 25.8 + (Math.random()-0.5)*3, annualBasis: 0.92 + (Math.random()-0.5)*0.1, dailyDiscount: 0.16 + (Math.random()-0.5)*0.1, annualPointDiscount: 24.3 + (Math.random()-0.5)*2 }
+            ],
+            // 沪深300 (IF)
+            [
+                { contract: "IF2601", price: 3852.4 + Math.random()*15, change: +28.7 + (Math.random()-0.5)*8, openInterest: 156890 + Math.floor(Math.random()*2000), volume: 89450 + Math.floor(Math.random()*2000), daysLeft: 18, basisChange: +3.5 + (Math.random()-0.5)*3, basis: 28.9 + (Math.random()-0.5)*5, annualBasis: 1.32 + (Math.random()-0.5)*0.15, dailyDiscount: 1.61 + (Math.random()-0.5)*0.2, annualPointDiscount: 58.7 + (Math.random()-0.5)*3 },
+                { contract: "IF2602", price: 3876.8 + Math.random()*15, change: +24.2 + (Math.random()-0.5)*8, openInterest: 112560 + Math.floor(Math.random()*2000), volume: 65820 + Math.floor(Math.random()*2000), daysLeft: 46, basisChange: +2.8 + (Math.random()-0.5)*3, basis: 32.5 + (Math.random()-0.5)*5, annualBasis: 1.25 + (Math.random()-0.5)*0.15, dailyDiscount: 0.71 + (Math.random()-0.5)*0.2, annualPointDiscount: 55.3 + (Math.random()-0.5)*3 },
+                { contract: "IF2603", price: 3895.3 + Math.random()*15, change: +19.5 + (Math.random()-0.5)*8, openInterest: 87420 + Math.floor(Math.random()*2000), volume: 48960 + Math.floor(Math.random()*2000), daysLeft: 74, basisChange: +2.2 + (Math.random()-0.5)*3, basis: 36.8 + (Math.random()-0.5)*5, annualBasis: 1.18 + (Math.random()-0.5)*0.15, dailyDiscount: 0.50 + (Math.random()-0.5)*0.2, annualPointDiscount: 52.1 + (Math.random()-0.5)*3 },
+                { contract: "IF2606", price: 3928.7 + Math.random()*15, change: +14.8 + (Math.random()-0.5)*8, openInterest: 56890 + Math.floor(Math.random()*2000), volume: 32150 + Math.floor(Math.random()*2000), daysLeft: 166, basisChange: +1.8 + (Math.random()-0.5)*3, basis: 42.3 + (Math.random()-0.5)*5, annualBasis: 1.05 + (Math.random()-0.5)*0.15, dailyDiscount: 0.26 + (Math.random()-0.5)*0.2, annualPointDiscount: 48.6 + (Math.random()-0.5)*3 }
+            ],
+            // 中证500 (IC)
+            [
+                { contract: "IC2601", price: 5865.7 + Math.random()*20, change: +45.2 + (Math.random()-0.5)*10, openInterest: 98760 + Math.floor(Math.random()*1500), volume: 56890 + Math.floor(Math.random()*1500), daysLeft: 18, basisChange: +5.8 + (Math.random()-0.5)*4, basis: 45.6 + (Math.random()-0.5)*6, annualBasis: 1.45 + (Math.random()-0.5)*0.2, dailyDiscount: 2.53 + (Math.random()-0.5)*0.3, annualPointDiscount: 92.8 + (Math.random()-0.5)*4 },
+                { contract: "IC2602", price: 5912.4 + Math.random()*20, change: +38.9 + (Math.random()-0.5)*10, openInterest: 75420 + Math.floor(Math.random()*1500), volume: 42580 + Math.floor(Math.random()*1500), daysLeft: 46, basisChange: +4.6 + (Math.random()-0.5)*4, basis: 52.8 + (Math.random()-0.5)*6, annualBasis: 1.38 + (Math.random()-0.5)*0.2, dailyDiscount: 1.15 + (Math.random()-0.5)*0.3, annualPointDiscount: 88.5 + (Math.random()-0.5)*4 },
+                { contract: "IC2603", price: 5958.8 + Math.random()*20, change: +32.5 + (Math.random()-0.5)*10, openInterest: 58960 + Math.floor(Math.random()*1500), volume: 31450 + Math.floor(Math.random()*1500), daysLeft: 74, basisChange: +3.9 + (Math.random()-0.5)*4, basis: 58.7 + (Math.random()-0.5)*6, annualBasis: 1.32 + (Math.random()-0.5)*0.2, dailyDiscount: 0.80 + (Math.random()-0.5)*0.3, annualPointDiscount: 85.2 + (Math.random()-0.5)*4 },
+                { contract: "IC2606", price: 6045.6 + Math.random()*20, change: +25.8 + (Math.random()-0.5)*10, openInterest: 42150 + Math.floor(Math.random()*1500), volume: 20890 + Math.floor(Math.random()*1500), daysLeft: 166, basisChange: +3.2 + (Math.random()-0.5)*4, basis: 68.9 + (Math.random()-0.5)*6, annualBasis: 1.25 + (Math.random()-0.5)*0.2, dailyDiscount: 0.42 + (Math.random()-0.5)*0.3, annualPointDiscount: 81.7 + (Math.random()-0.5)*4 }
+            ],
+            // 中证1000 (IM)
+            [
+                { contract: "IM2601", price: 6589.3 + Math.random()*25, change: +52.6 + (Math.random()-0.5)*12, openInterest: 87450 + Math.floor(Math.random()*1800), volume: 48960 + Math.floor(Math.random()*1800), daysLeft: 18, basisChange: +6.5 + (Math.random()-0.5)*5, basis: 52.8 + (Math.random()-0.5)*7, annualBasis: 1.52 + (Math.random()-0.5)*0.25, dailyDiscount: 2.93 + (Math.random()-0.5)*0.4, annualPointDiscount: 106.8 + (Math.random()-0.5)*5 },
+                { contract: "IM2602", price: 6658.7 + Math.random()*25, change: +45.8 + (Math.random()-0.5)*12, openInterest: 65820 + Math.floor(Math.random()*1800), volume: 36580 + Math.floor(Math.random()*1800), daysLeft: 46, basisChange: +5.2 + (Math.random()-0.5)*5, basis: 61.5 + (Math.random()-0.5)*7, annualBasis: 1.45 + (Math.random()-0.5)*0.25, dailyDiscount: 1.34 + (Math.random()-0.5)*0.4, annualPointDiscount: 102.5 + (Math.random()-0.5)*5 },
+                { contract: "IM2603", price: 6724.9 + Math.random()*25, change: +38.5 + (Math.random()-0.5)*12, openInterest: 48960 + Math.floor(Math.random()*1800), volume: 28740 + Math.floor(Math.random()*1800), daysLeft: 74, basisChange: +4.5 + (Math.random()-0.5)*5, basis: 68.9 + (Math.random()-0.5)*7, annualBasis: 1.38 + (Math.random()-0.5)*0.25, dailyDiscount: 0.93 + (Math.random()-0.5)*0.4, annualPointDiscount: 98.2 + (Math.random()-0.5)*5 },
+                { contract: "IM2606", price: 6856.8 + Math.random()*25, change: +30.2 + (Math.random()-0.5)*12, openInterest: 36580 + Math.floor(Math.random()*1800), volume: 19870 + Math.floor(Math.random()*1800), daysLeft: 166, basisChange: +3.8 + (Math.random()-0.5)*5, basis: 82.5 + (Math.random()-0.5)*7, annualBasis: 1.32 + (Math.random()-0.5)*0.25, dailyDiscount: 0.50 + (Math.random()-0.5)*0.4, annualPointDiscount: 94.7 + (Math.random()-0.5)*5 }
+            ]
+        ];
+
+        // 获取DOM元素
+        const tabs = document.querySelectorAll('.tab');
+        const tableBody = document.querySelector('#basis-table tbody');
+        const tabsContainer = document.querySelector('.tabs');
+        const updateTimeEl = document.querySelector('#update-time');
+        let currentActiveIndex = 0; // 记录当前激活的标签页
+
+        // 初始化：渲染第一个标签页数据
+        renderTable(currentActiveIndex);
+        // ========== 核心修改：启动自动更新定时器 ==========
+        setInterval(() => {
+            updateTableData();
+        }, AUTO_UPDATE_INTERVAL);
+        // ==================================================
+
+        // 点击切换标签页
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const index = parseInt(tab.dataset.index);
+                currentActiveIndex = index; // 更新当前激活索引
+                switchTab(index);
+            });
+        });
+
+        // TAB键切换标签页（键盘导航）
+        tabsContainer.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab' && !e.shiftKey) {
+                e.preventDefault();
+                const activeTab = document.querySelector('.tab.active');
+                currentActiveIndex = (parseInt(activeTab.dataset.index) + 1) % 4;
+                switchTab(currentActiveIndex);
+                tabs[currentActiveIndex].focus();
+            }
+            if (e.key === 'Tab' && e.shiftKey) {
+                e.preventDefault();
+                const activeTab = document.querySelector('.tab.active');
+                currentActiveIndex = (parseInt(activeTab.dataset.index) - 1 + 4) % 4;
+                switchTab(currentActiveIndex);
+                tabs[currentActiveIndex].focus();
+            }
+        });
+
+        // 切换标签页核心函数
+        function switchTab(index) {
+            tabs.forEach((tab, i) => {
+                tab.classList.toggle('active', i === index);
+            });
+            renderTable(index);
+        }
+
+        // 渲染表格数据
+        function renderTable(index) {
+            tableBody.innerHTML = '';
+            const data = basisData[index];
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="contract">${item.contract}</td>
+                    <td>${item.price.toFixed(1)}</td>
+                    <td style="color: ${item.change >= 0 ? '#e63946' : '#16a34a'}">${item.change >= 0 ? '+' : ''}${item.change.toFixed(1)}</td>
+                    <td>${item.openInterest.toLocaleString()}</td>
+                    <td>${item.volume.toLocaleString()}</td>
+                    <td>${item.daysLeft}</td>
+                    <td style="color: ${item.basisChange >= 0 ? '#e63946' : '#16a34a'}">${item.basisChange >= 0 ? '+' : ''}${item.basisChange.toFixed(1)}</td>
+                    <td>${item.basis.toFixed(1)}</td>
+                    <td>${item.annualBasis.toFixed(2)}</td>
+                    <td>${item.dailyDiscount.toFixed(2)}</td>
+                    <td>${item.annualPointDiscount.toFixed(1)}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+            // 更新最后刷新时间
+            updateTimeEl.textContent = `最后更新：${new Date().toLocaleString()}`;
+        }
+
+        // 自动更新数据函数（实际使用时替换为真实接口请求）
+        function updateTableData() {
+            renderTable(currentActiveIndex); // 刷新当前激活标签页的数据
+        }
+    </script>
+</body>
+</html>
