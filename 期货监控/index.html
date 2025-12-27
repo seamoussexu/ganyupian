@@ -2,294 +2,884 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股指期货基差监控系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>中金所股指期货基差监控</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: "Microsoft Yahei", Arial, sans-serif;
+            font-family: "PingFang SC", "Microsoft Yahei", sans-serif;
         }
-
         body {
-            background-color: #f5f7fa;
-            padding: 20px;
+            background: #f5f5f5;
+            padding: 8px;
+            font-size: 14px;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
+        /* 合约切换标签栏 */
+        .contract-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            background: #fff;
+            border-radius: 6px;
+            padding: 4px;
         }
-
-        .header {
-            background-color: #1e6fff;
-            color: white;
-            padding: 16px 24px;
-            font-size: 20px;
+        .tab-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px 0;
+            border-radius: 4px;
             font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            user-select: none;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+        }
+        .tab-item.active {
+            background: #4CAF50;
+            color: #fff;
+        }
+        .tab-item:focus {
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+        }
+        /* 闭市提示 */
+        .close-market-tip {
+            background: #fff3cd;
+            color: #856404;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            text-align: center;
+            margin-bottom: 8px;
+            border: 1px solid #ffeeba;
+        }
+        /* 顶部信息栏 */
+        .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 8px;
+            background: #fff;
+            padding: 6px 8px;
+            border-radius: 6px;
         }
-
-        .update-info {
+        .top-bar .left {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .top-bar .right {
+            text-align: right;
+        }
+        .top-bar .time {
+            font-size: 12px;
+            color: #666;
+        }
+        .top-bar .change {
             font-size: 14px;
-            font-weight: normal;
-            opacity: 0.8;
+            color: #e63946;
         }
-
-        /* 选项卡样式 */
-        .tabs {
-            display: flex;
-            background-color: #f0f5ff;
-            border-bottom: 1px solid #e5e9f2;
-        }
-
-        .tab {
-            padding: 12px 24px;
-            cursor: pointer;
+        .top-bar .price {
             font-size: 16px;
-            font-weight: 500;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s ease;
-            outline: none;
+            font-weight: bold;
+            color: #333;
         }
-
-        .tab:hover {
-            background-color: #e6f0ff;
-        }
-
-        .tab.active {
-            border-bottom-color: #1e6fff;
-            color: #1e6fff;
-            background-color: white;
-        }
-
-        /* 表格样式 */
-        .table-container {
-            padding: 24px;
-            overflow-x: auto;
-        }
-
-        table {
+        /* 核心表格 */
+        .data-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1000px;
+            background: #fff;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            font-size: 13px;
         }
-
-        th, td {
-            padding: 12px 16px;
-            text-align: right;
-            border: 1px solid #e5e9f2;
+        .data-table th, .data-table td {
+            border: 1px solid #eee;
+            padding: 4px 3px;
+            text-align: center;
+            line-height: 1.2;
         }
-
-        th {
-            background-color: #f8fafc;
+        .data-table th {
+            background: #f8f8f8;
             font-weight: 600;
-            color: #334155;
-            position: sticky;
-            top: 0;
+            color: #333;
+            font-size: 12px;
+            padding: 5px 0;
         }
-
-        td {
-            color: #475569;
-        }
-
-        tr:nth-child(even) {
-            background-color: #f8fafc;
-        }
-
-        tr:hover {
-            background-color: #f0f7ff;
-        }
-
-        .contract {
+        .data-table .row-title {
             text-align: left;
-            font-weight: 500;
+            padding-left: 8px;
+            color: #666;
+            white-space: nowrap;
         }
-
-        /* 响应式适配 */
-        @media (max-width: 768px) {
-            .tab {
-                padding: 10px 16px;
-                font-size: 14px;
-            }
-
-            .table-container {
-                padding: 16px;
-            }
-
-            th, td {
-                padding: 8px 10px;
-                font-size: 14px;
-            }
-
-            .update-info {
+        /* 涨跌颜色 */
+        .rise {
+            color: #e63946 !important;
+        }
+        .fall {
+            color: #1d3557 !important;
+        }
+        /* 开关样式 */
+        .switch-group {
+            margin-bottom: 10px;
+            background: #fff;
+            padding: 8px;
+            border-radius: 6px;
+        }
+        .switch-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .switch-item:last-child {
+            border-bottom: none;
+        }
+        .switch-item span {
+            font-size: 14px;
+            color: #333;
+        }
+        .switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #ddd;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            top: 2px;
+            left: 2px;
+            transition: left 0.2s;
+        }
+        .switch.active::after {
+            left: 22px;
+        }
+        .switch.active {
+            background: #4CAF50;
+        }
+        /* 底部按钮 */
+        .btn-group {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+        .btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+            padding: 8px 0;
+            flex: 1;
+            max-width: 80px;
+        }
+        .btn .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4CAF50;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 4px;
+            font-size: 18px;
+        }
+        .btn.manual .icon {
+            background: #ff9800;
+        }
+        .btn.record .icon {
+            background: #2196F3;
+        }
+        /* 数据源提示 */
+        .tip {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 6px 10px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            font-size: 12px;
+            border-radius: 4px;
+            display: none;
+            z-index: 999;
+        }
+        /* 小屏适配 */
+        @media (max-width: 375px) {
+            .data-table th, .data-table td {
                 font-size: 12px;
+                padding: 3px 2px;
+            }
+            .tab-item {
+                font-size: 13px;
+                padding: 6px 0;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            股指期货基差实时监控
-            <div class="update-info" id="update-time">最后更新：${new Date().toLocaleString()}</div>
+    <!-- 数据源提示 -->
+    <div class="tip" id="dataSourceTip"></div>
+
+    <!-- 闭市提示栏 -->
+    <div class="close-market-tip" id="closeMarketTip">当前为闭市时间，显示最新缓存数据，开市后自动更新实时数据</div>
+
+    <!-- 合约切换标签栏 -->
+    <div class="contract-tabs">
+        <div class="tab-item active" tabindex="0" data-code="IF">IF</div>
+        <div class="tab-item" tabindex="0" data-code="IH">IH</div>
+        <div class="tab-item" tabindex="0" data-code="IC">IC</div>
+        <div class="tab-item" tabindex="0" data-code="IM">IM</div>
+    </div>
+
+    <!-- 顶部信息 -->
+    <div class="top-bar">
+        <div class="left" id="currentContract">IF</div>
+        <div class="right">
+            <div class="time" id="updateTime">2025/12/26 16:11:43</div>
+            <div class="change" id="totalChange">+14.70</div>
+            <div class="price" id="totalPrice">4657.24</div>
         </div>
-        <!-- 选项卡区域 -->
-        <div class="tabs" tabindex="0">
-            <div class="tab active" data-index="0" tabindex="0">上证50 (IH)</div>
-            <div class="tab" data-index="1" tabindex="0">沪深300 (IF)</div>
-            <div class="tab" data-index="2" tabindex="0">中证500 (IC)</div>
-            <div class="tab" data-index="3" tabindex="0">中证1000 (IM)</div>
+    </div>
+
+    <!-- 核心数据表格 -->
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th></th>
+                <th>2601</th>
+                <th>2602</th>
+                <th>2603</th>
+                <th>2606</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td class="row-title">价格</td><td id="price_2601">4657.0</td><td id="price_2602">4642.0</td><td id="price_2603">4638.4</td><td id="price_2606">4591.0</td></tr>
+            <tr><td class="row-title">涨跌</td><td id="change_2601" class="rise">25.0</td><td id="change_2602" class="rise">23.4</td><td id="change_2603" class="rise">27.8</td><td id="change_2606" class="rise">29.2</td></tr>
+            <tr><td class="row-title">未平仓量</td><td id="open_interest_2601">63400</td><td id="open_interest_2602">4104</td><td id="open_interest_2603">175215</td><td id="open_interest_2606">45186</td></tr>
+            <tr><td class="row-title">成交量</td><td id="volume_2601">32939</td><td id="volume_2602">3163</td><td id="volume_2603">70821</td><td id="volume_2606">11923</td></tr>
+            <tr><td class="row-title">剩余天数</td><td id="days_left_2601">22</td><td id="days_left_2602">57</td><td id="days_left_2603">85</td><td id="days_left_2606">176</td></tr>
+            <tr><td class="row-title">基差变化</td><td id="basis_change_2601" class="fall">-10.30</td><td id="basis_change_2602" class="fall">-8.70</td><td id="basis_change_2603" class="fall">-13.10</td><td id="basis_change_2606" class="fall">-14.50</td></tr>
+            <tr><td class="row-title">基差</td><td id="basis_2601">0.24</td><td id="basis_2602">15.24</td><td id="basis_2603">18.84</td><td id="basis_2606">66.24</td></tr>
+            <tr><td class="row-title">年化基差</td><td id="annual_basis_2601">0.09%</td><td id="annual_basis_2602">2.10%</td><td id="annual_basis_2603">1.74%</td><td id="annual_basis_2606">2.99%</td></tr>
+            <tr><td class="row-title">日平均折价</td><td id="daily_discount_2601">0.01</td><td id="daily_discount_2602">0.27</td><td id="daily_discount_2603">0.22</td><td id="daily_discount_2606">0.38</td></tr>
+            <tr><td class="row-title">年化每点折</td><td id="annual_point_discount_2601">2.81</td><td id="annual_point_discount_2602">7.25</td><td id="annual_point_discount_2603">10.80</td><td id="annual_point_discount_2606">22.14</td></tr>
+        </tbody>
+    </table>
+
+    <!-- 开关组 -->
+    <div class="switch-group">
+        <div class="switch-item">
+            <span>相对基差指示</span>
+            <div class="switch" id="switch1"></div>
         </div>
-        <!-- 表格区域 -->
-        <div class="table-container">
-            <table id="basis-table">
-                <thead>
-                    <tr>
-                        <th class="contract">合约</th>
-                        <th>价格</th>
-                        <th>涨跌</th>
-                        <th>未平仓量</th>
-                        <th>成交量</th>
-                        <th>剩余天数</th>
-                        <th>基差变化</th>
-                        <th>基差</th>
-                        <th>年化基差(%)</th>
-                        <th>日平均折价</th>
-                        <th>年化每点折</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- 数据会通过JS动态渲染 -->
-                </tbody>
-            </table>
+        <div class="switch-item">
+            <span>换月辅助计算</span>
+            <div class="switch" id="switch2"></div>
+        </div>
+        <div class="switch-item">
+            <span>快速刷新</span>
+            <div class="switch" id="switch3"></div>
+        </div>
+    </div>
+
+    <!-- 底部按钮 -->
+    <div class="btn-group">
+        <div class="btn auto">
+            <div class="icon">A</div>
+            <div>自动获取</div>
+        </div>
+        <div class="btn manual">
+            <div class="icon">P</div>
+            <div>手动输入</div>
+        </div>
+        <div class="btn record">
+            <div class="icon">📝</div>
+            <div>更新记录</div>
         </div>
     </div>
 
     <script>
-        // ========== 核心修改：设置自动更新间隔（毫秒） ==========
-        // 30秒 = 30000毫秒，1分钟=60000毫秒，5分钟=300000毫秒
-        const AUTO_UPDATE_INTERVAL = 30000; // 建议设置30秒以上，避免频繁请求
-        // ======================================================
+        // ========== 全局配置（新增本地存储和缓存机制） ==========
+        const CONFIG = {
+            // 合约基础配置+兜底数据
+            contractConfig: {
+                IF: { 
+                    name: '沪深300股指期货', 
+                    spotPrice: 4657.24,
+                    fallbackData: { // IF兜底数据
+                        '2601': { price: 4657.0, change: 25.0, openInterest: 63400, volume: 32939 },
+                        '2602': { price: 4642.0, change: 23.4, openInterest: 4104, volume: 3163 },
+                        '2603': { price: 4638.4, change: 27.8, openInterest: 175215, volume: 70821 },
+                        '2606': { price: 4591.0, change: 29.2, openInterest: 45186, volume: 11923 }
+                    }
+                },
+                IH: { 
+                    name: '上证50股指期货', 
+                    spotPrice: 2380.56,
+                    fallbackData: { // IH兜底数据
+                        '2601': { price: 2382.6, change: 12.3, openInterest: 58200, volume: 28560 },
+                        '2602': { price: 2378.8, change: 8.5, openInterest: 3890, volume: 2650 },
+                        '2603': { price: 2375.2, change: 10.1, openInterest: 168500, volume: 65400 },
+                        '2606': { price: 2360.5, change: 15.7, openInterest: 42800, volume: 10800 }
+                    }
+                },
+                IC: { 
+                    name: '中证500股指期货', 
+                    spotPrice: 7820.15,
+                    fallbackData: { // IC兜底数据
+                        '2601': { price: 7825.5, change: 45.2, openInterest: 72600, volume: 41200 },
+                        '2602': { price: 7810.8, change: 30.5, openInterest: 5200, volume: 4800 },
+                        '2603': { price: 7798.6, change: 38.9, openInterest: 185600, volume: 82500 },
+                        '2606': { price: 7750.2, change: 55.8, openInterest: 51200, volume: 15600 }
+                    }
+                },
+                IM: { 
+                    name: '中证1000股指期货', 
+                    spotPrice: 6510.88,
+                    fallbackData: { // IM兜底数据
+                        '2601': { price: 6518.3, change: 38.5, openInterest: 68500, volume: 36800 },
+                        '2602': { price: 6505.6, change: 25.8, openInterest: 4600, volume: 3900 },
+                        '2603': { price: 6492.4, change: 32.1, openInterest: 178900, volume: 75600 },
+                        '2606': { price: 6450.8, change: 48.9, openInterest: 48500, volume: 13200 }
+                    }
+                }
+            },
+            currentContract: 'IF', 
+            contracts: ['2601', '2602', '2603', '2606'], 
+            refreshInterval: 2000, 
+            timeout: 1500, 
+            currentSource: 'sina', 
+            sourceStatus: { sina: true, eastmoney: true }, 
+            lastBasisData: {}, 
+            refreshTimer: null,
+            isMarketOpen: false // 默认闭市
+        };
 
-        // 模拟四大指数的基差数据（实际使用时替换为真实接口请求）
-        const basisData = [
-            // 上证50 (IH)
-            [
-                { contract: "IH2601", price: 2356.8 + Math.random()*10, change: +12.5 + (Math.random()-0.5)*5, openInterest: 85420 + Math.floor(Math.random()*1000), volume: 42580 + Math.floor(Math.random()*1000), daysLeft: 18, basisChange: +2.3 + (Math.random()-0.5)*2, basis: 15.6 + (Math.random()-0.5)*3, annualBasis: 1.25 + (Math.random()-0.5)*0.1, dailyDiscount: 0.87 + (Math.random()-0.5)*0.1, annualPointDiscount: 32.5 + (Math.random()-0.5)*2 },
-                { contract: "IH2602", price: 2368.2 + Math.random()*10, change: +10.8 + (Math.random()-0.5)*5, openInterest: 62150 + Math.floor(Math.random()*1000), volume: 28450 + Math.floor(Math.random()*1000), daysLeft: 46, basisChange: +1.8 + (Math.random()-0.5)*2, basis: 18.9 + (Math.random()-0.5)*3, annualBasis: 1.18 + (Math.random()-0.5)*0.1, dailyDiscount: 0.41 + (Math.random()-0.5)*0.1, annualPointDiscount: 29.8 + (Math.random()-0.5)*2 },
-                { contract: "IH2603", price: 2375.5 + Math.random()*10, change: +8.3 + (Math.random()-0.5)*5, openInterest: 48720 + Math.floor(Math.random()*1000), volume: 19630 + Math.floor(Math.random()*1000), daysLeft: 74, basisChange: +1.5 + (Math.random()-0.5)*2, basis: 21.2 + (Math.random()-0.5)*3, annualBasis: 1.05 + (Math.random()-0.5)*0.1, dailyDiscount: 0.29 + (Math.random()-0.5)*0.1, annualPointDiscount: 27.6 + (Math.random()-0.5)*2 },
-                { contract: "IH2606", price: 2389.7 + Math.random()*10, change: +5.6 + (Math.random()-0.5)*5, openInterest: 32180 + Math.floor(Math.random()*1000), volume: 10560 + Math.floor(Math.random()*1000), daysLeft: 166, basisChange: +1.2 + (Math.random()-0.5)*2, basis: 25.8 + (Math.random()-0.5)*3, annualBasis: 0.92 + (Math.random()-0.5)*0.1, dailyDiscount: 0.16 + (Math.random()-0.5)*0.1, annualPointDiscount: 24.3 + (Math.random()-0.5)*2 }
-            ],
-            // 沪深300 (IF)
-            [
-                { contract: "IF2601", price: 3852.4 + Math.random()*15, change: +28.7 + (Math.random()-0.5)*8, openInterest: 156890 + Math.floor(Math.random()*2000), volume: 89450 + Math.floor(Math.random()*2000), daysLeft: 18, basisChange: +3.5 + (Math.random()-0.5)*3, basis: 28.9 + (Math.random()-0.5)*5, annualBasis: 1.32 + (Math.random()-0.5)*0.15, dailyDiscount: 1.61 + (Math.random()-0.5)*0.2, annualPointDiscount: 58.7 + (Math.random()-0.5)*3 },
-                { contract: "IF2602", price: 3876.8 + Math.random()*15, change: +24.2 + (Math.random()-0.5)*8, openInterest: 112560 + Math.floor(Math.random()*2000), volume: 65820 + Math.floor(Math.random()*2000), daysLeft: 46, basisChange: +2.8 + (Math.random()-0.5)*3, basis: 32.5 + (Math.random()-0.5)*5, annualBasis: 1.25 + (Math.random()-0.5)*0.15, dailyDiscount: 0.71 + (Math.random()-0.5)*0.2, annualPointDiscount: 55.3 + (Math.random()-0.5)*3 },
-                { contract: "IF2603", price: 3895.3 + Math.random()*15, change: +19.5 + (Math.random()-0.5)*8, openInterest: 87420 + Math.floor(Math.random()*2000), volume: 48960 + Math.floor(Math.random()*2000), daysLeft: 74, basisChange: +2.2 + (Math.random()-0.5)*3, basis: 36.8 + (Math.random()-0.5)*5, annualBasis: 1.18 + (Math.random()-0.5)*0.15, dailyDiscount: 0.50 + (Math.random()-0.5)*0.2, annualPointDiscount: 52.1 + (Math.random()-0.5)*3 },
-                { contract: "IF2606", price: 3928.7 + Math.random()*15, change: +14.8 + (Math.random()-0.5)*8, openInterest: 56890 + Math.floor(Math.random()*2000), volume: 32150 + Math.floor(Math.random()*2000), daysLeft: 166, basisChange: +1.8 + (Math.random()-0.5)*3, basis: 42.3 + (Math.random()-0.5)*5, annualBasis: 1.05 + (Math.random()-0.5)*0.15, dailyDiscount: 0.26 + (Math.random()-0.5)*0.2, annualPointDiscount: 48.6 + (Math.random()-0.5)*3 }
-            ],
-            // 中证500 (IC)
-            [
-                { contract: "IC2601", price: 5865.7 + Math.random()*20, change: +45.2 + (Math.random()-0.5)*10, openInterest: 98760 + Math.floor(Math.random()*1500), volume: 56890 + Math.floor(Math.random()*1500), daysLeft: 18, basisChange: +5.8 + (Math.random()-0.5)*4, basis: 45.6 + (Math.random()-0.5)*6, annualBasis: 1.45 + (Math.random()-0.5)*0.2, dailyDiscount: 2.53 + (Math.random()-0.5)*0.3, annualPointDiscount: 92.8 + (Math.random()-0.5)*4 },
-                { contract: "IC2602", price: 5912.4 + Math.random()*20, change: +38.9 + (Math.random()-0.5)*10, openInterest: 75420 + Math.floor(Math.random()*1500), volume: 42580 + Math.floor(Math.random()*1500), daysLeft: 46, basisChange: +4.6 + (Math.random()-0.5)*4, basis: 52.8 + (Math.random()-0.5)*6, annualBasis: 1.38 + (Math.random()-0.5)*0.2, dailyDiscount: 1.15 + (Math.random()-0.5)*0.3, annualPointDiscount: 88.5 + (Math.random()-0.5)*4 },
-                { contract: "IC2603", price: 5958.8 + Math.random()*20, change: +32.5 + (Math.random()-0.5)*10, openInterest: 58960 + Math.floor(Math.random()*1500), volume: 31450 + Math.floor(Math.random()*1500), daysLeft: 74, basisChange: +3.9 + (Math.random()-0.5)*4, basis: 58.7 + (Math.random()-0.5)*6, annualBasis: 1.32 + (Math.random()-0.5)*0.2, dailyDiscount: 0.80 + (Math.random()-0.5)*0.3, annualPointDiscount: 85.2 + (Math.random()-0.5)*4 },
-                { contract: "IC2606", price: 6045.6 + Math.random()*20, change: +25.8 + (Math.random()-0.5)*10, openInterest: 42150 + Math.floor(Math.random()*1500), volume: 20890 + Math.floor(Math.random()*1500), daysLeft: 166, basisChange: +3.2 + (Math.random()-0.5)*4, basis: 68.9 + (Math.random()-0.5)*6, annualBasis: 1.25 + (Math.random()-0.5)*0.2, dailyDiscount: 0.42 + (Math.random()-0.5)*0.3, annualPointDiscount: 81.7 + (Math.random()-0.5)*4 }
-            ],
-            // 中证1000 (IM)
-            [
-                { contract: "IM2601", price: 6589.3 + Math.random()*25, change: +52.6 + (Math.random()-0.5)*12, openInterest: 87450 + Math.floor(Math.random()*1800), volume: 48960 + Math.floor(Math.random()*1800), daysLeft: 18, basisChange: +6.5 + (Math.random()-0.5)*5, basis: 52.8 + (Math.random()-0.5)*7, annualBasis: 1.52 + (Math.random()-0.5)*0.25, dailyDiscount: 2.93 + (Math.random()-0.5)*0.4, annualPointDiscount: 106.8 + (Math.random()-0.5)*5 },
-                { contract: "IM2602", price: 6658.7 + Math.random()*25, change: +45.8 + (Math.random()-0.5)*12, openInterest: 65820 + Math.floor(Math.random()*1800), volume: 36580 + Math.floor(Math.random()*1800), daysLeft: 46, basisChange: +5.2 + (Math.random()-0.5)*5, basis: 61.5 + (Math.random()-0.5)*7, annualBasis: 1.45 + (Math.random()-0.5)*0.25, dailyDiscount: 1.34 + (Math.random()-0.5)*0.4, annualPointDiscount: 102.5 + (Math.random()-0.5)*5 },
-                { contract: "IM2603", price: 6724.9 + Math.random()*25, change: +38.5 + (Math.random()-0.5)*12, openInterest: 48960 + Math.floor(Math.random()*1800), volume: 28740 + Math.floor(Math.random()*1800), daysLeft: 74, basisChange: +4.5 + (Math.random()-0.5)*5, basis: 68.9 + (Math.random()-0.5)*7, annualBasis: 1.38 + (Math.random()-0.5)*0.25, dailyDiscount: 0.93 + (Math.random()-0.5)*0.4, annualPointDiscount: 98.2 + (Math.random()-0.5)*5 },
-                { contract: "IM2606", price: 6856.8 + Math.random()*25, change: +30.2 + (Math.random()-0.5)*12, openInterest: 36580 + Math.floor(Math.random()*1800), volume: 19870 + Math.floor(Math.random()*1800), daysLeft: 166, basisChange: +3.8 + (Math.random()-0.5)*5, basis: 82.5 + (Math.random()-0.5)*7, annualBasis: 1.32 + (Math.random()-0.5)*0.25, dailyDiscount: 0.50 + (Math.random()-0.5)*0.4, annualPointDiscount: 94.7 + (Math.random()-0.5)*5 }
-            ]
-        ];
-
-        // 获取DOM元素
-        const tabs = document.querySelectorAll('.tab');
-        const tableBody = document.querySelector('#basis-table tbody');
-        const tabsContainer = document.querySelector('.tabs');
-        const updateTimeEl = document.querySelector('#update-time');
-        let currentActiveIndex = 0; // 记录当前激活的标签页
-
-        // 初始化：渲染第一个标签页数据
-        renderTable(currentActiveIndex);
-        // ========== 核心修改：启动自动更新定时器 ==========
-        setInterval(() => {
-            updateTableData();
-        }, AUTO_UPDATE_INTERVAL);
-        // ==================================================
-
-        // 点击切换标签页
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const index = parseInt(tab.dataset.index);
-                currentActiveIndex = index; // 更新当前激活索引
-                switchTab(index);
-            });
-        });
-
-        // TAB键切换标签页（键盘导航）
-        tabsContainer.addEventListener('keydown', (e) => {
-            if (e.key === 'Tab' && !e.shiftKey) {
-                e.preventDefault();
-                const activeTab = document.querySelector('.tab.active');
-                currentActiveIndex = (parseInt(activeTab.dataset.index) + 1) % 4;
-                switchTab(currentActiveIndex);
-                tabs[currentActiveIndex].focus();
+        // ========== 本地存储工具函数 ==========
+        // 保存数据到本地存储
+        function saveToLocalStorage(contract, data) {
+            try {
+                const storedData = {
+                    data: data,
+                    timestamp: new Date().getTime()
+                };
+                localStorage.setItem(`future_data_${contract}`, JSON.stringify(storedData));
+            } catch (e) {
+                console.error('保存数据到本地存储失败:', e);
             }
-            if (e.key === 'Tab' && e.shiftKey) {
-                e.preventDefault();
-                const activeTab = document.querySelector('.tab.active');
-                currentActiveIndex = (parseInt(activeTab.dataset.index) - 1 + 4) % 4;
-                switchTab(currentActiveIndex);
-                tabs[currentActiveIndex].focus();
+        }
+
+        // 从本地存储获取数据
+        function getFromLocalStorage(contract) {
+            try {
+                const storedData = localStorage.getItem(`future_data_${contract}`);
+                if (storedData) {
+                    return JSON.parse(storedData);
+                }
+            } catch (e) {
+                console.error('从本地存储获取数据失败:', e);
             }
-        });
+            return null;
+        }
 
-        // 切换标签页核心函数
-        function switchTab(index) {
-            tabs.forEach((tab, i) => {
-                tab.classList.toggle('active', i === index);
+        // ========== 工具函数 ==========
+        // 格式化时间
+        function formatTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+            const second = String(now.getSeconds()).padStart(2, '0');
+            return `${year}/${month}/${day} ${hour}:${minute}:${second}`;
+        }
+
+        // 计算合约剩余天数
+        function calculateDaysLeft(contractMonth) {
+            const year = 2026;
+            const month = parseInt(contractMonth.slice(0, 2)) - 1;
+            let fridayCount = 0;
+            let targetDate = null;
+            
+            for (let day = 1; day <= 31; day++) {
+                const date = new Date(year, month, day);
+                if (date.getMonth() !== month) break;
+                if (date.getDay() === 5) {
+                    fridayCount++;
+                    if (fridayCount === 3) {
+                        targetDate = date;
+                        break;
+                    }
+                }
+            }
+
+            const now = new Date();
+            const diffTime = targetDate - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays > 0 ? diffDays : 0;
+        }
+
+        // 显示提示
+        function showSourceTip(text) {
+            const tip = document.getElementById('dataSourceTip');
+            tip.textContent = text;
+            tip.style.display = 'block';
+            setTimeout(() => tip.style.display = 'none', 2000);
+        }
+
+        // 检查是否开市（中金所股指期货交易时间：9:30-11:30，13:00-15:00，工作日）
+        function checkMarketStatus() {
+            const now = new Date();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const day = now.getDay();
+
+            // 排除周末
+            if (day === 0 || day === 6) {
+                CONFIG.isMarketOpen = false;
+                return false;
+            }
+
+            // 检查交易时间段
+            const isMorning = (hour === 9 && minute >= 30) || (hour > 9 && hour < 11) || (hour === 11 && minute <= 30);
+            const isAfternoon = (hour === 13 && minute >= 0) || (hour > 13 && hour < 15) || (hour === 15 && minute <= 0);
+            
+            CONFIG.isMarketOpen = isMorning || isAfternoon;
+            // 更新闭市提示显示状态
+            document.getElementById('closeMarketTip').style.display = CONFIG.isMarketOpen ? 'none' : 'block';
+            return CONFIG.isMarketOpen;
+        }
+
+        // ========== 数据获取（新增本地缓存逻辑） ==========
+        // 新浪财经数据获取
+        function fetchSinaData() {
+            return new Promise((resolve, reject) => {
+                // 闭市时尝试获取本地缓存数据
+                if (!checkMarketStatus()) {
+                    const cachedData = getFromLocalStorage(CONFIG.currentContract);
+                    if (cachedData) {
+                        // 如果有缓存数据，使用缓存
+                        resolve(cachedData.data);
+                        return;
+                    } else {
+                        // 没有缓存数据才使用兜底数据
+                        resolve(CONFIG.contractConfig[CONFIG.currentContract].fallbackData);
+                        return;
+                    }
+                }
+
+                const contractCodes = CONFIG.contracts.map(month => `${CONFIG.currentContract}${month}.CFE`).join(',');
+                const url = `http://hq.sinajs.cn/list=${contractCodes}?r=${Math.random()}`;
+
+                const script = document.createElement('script');
+                script.src = url;
+                script.async = true;
+
+                const timeoutTimer = setTimeout(() => {
+                    script.remove();
+                    CONFIG.sourceStatus.sina = false;
+                    // 超时尝试使用缓存数据
+                    const cachedData = getFromLocalStorage(CONFIG.currentContract);
+                    if (cachedData) {
+                        resolve(cachedData.data);
+                    } else {
+                        resolve(CONFIG.contractConfig[CONFIG.currentContract].fallbackData);
+                    }
+                }, CONFIG.timeout);
+
+                window.handleSinaData = function() {
+                    clearTimeout(timeoutTimer);
+                    script.remove();
+                    
+                    const result = {};
+                    let hasValidData = false;
+                    CONFIG.contracts.forEach(month => {
+                        const code = `hq_str_${CONFIG.currentContract}${month}.CFE`;
+                        if (window[code]) {
+                            const dataArr = window[code].split('=')[1].replace(/"/g, '').split(',');
+                            result[month] = {
+                                price: parseFloat(dataArr[3]) || 0,
+                                change: parseFloat(dataArr[21]) || 0,
+                                openInterest: parseInt(dataArr[10]) || 0,
+                                volume: parseInt(dataArr[9]) || 0
+                            };
+                            hasValidData = true;
+                        }
+                    });
+
+                    // 接口有有效数据则保存到本地并返回
+                    if (hasValidData) {
+                        CONFIG.currentSource = 'sina';
+                        showSourceTip(`当前数据源：新浪财经（${CONFIG.currentContract}）`);
+                        saveToLocalStorage(CONFIG.currentContract, result);
+                        resolve(result);
+                    } else {
+                        // 无有效数据则尝试使用缓存
+                        const cachedData = getFromLocalStorage(CONFIG.currentContract);
+                        if (cachedData) {
+                            resolve(cachedData.data);
+                        } else {
+                            resolve(CONFIG.contractConfig[CONFIG.currentContract].fallbackData);
+                        }
+                    }
+                };
+
+                script.onload = window.handleSinaData;
+                script.onerror = () => {
+                    clearTimeout(timeoutTimer);
+                    script.remove();
+                    CONFIG.sourceStatus.sina = false;
+                    // 加载失败尝试使用缓存
+                    const cachedData = getFromLocalStorage(CONFIG.currentContract);
+                    if (cachedData) {
+                        resolve(cachedData.data);
+                    } else {
+                        resolve(CONFIG.contractConfig[CONFIG.currentContract].fallbackData);
+                    }
+                };
+                document.body.appendChild(script);
             });
-            renderTable(index);
         }
 
-        // 渲染表格数据
-        function renderTable(index) {
-            tableBody.innerHTML = '';
-            const data = basisData[index];
-            data.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="contract">${item.contract}</td>
-                    <td>${item.price.toFixed(1)}</td>
-                    <td style="color: ${item.change >= 0 ? '#e63946' : '#16a34a'}">${item.change >= 0 ? '+' : ''}${item.change.toFixed(1)}</td>
-                    <td>${item.openInterest.toLocaleString()}</td>
-                    <td>${item.volume.toLocaleString()}</td>
-                    <td>${item.daysLeft}</td>
-                    <td style="color: ${item.basisChange >= 0 ? '#e63946' : '#16a34a'}">${item.basisChange >= 0 ? '+' : ''}${item.basisChange.toFixed(1)}</td>
-                    <td>${item.basis.toFixed(1)}</td>
-                    <td>${item.annualBasis.toFixed(2)}</td>
-                    <td>${item.dailyDiscount.toFixed(2)}</td>
-                    <td>${item.annualPointDiscount.toFixed(1)}</td>
-                `;
-                tableBody.appendChild(tr);
+        // 东方财富数据获取（备用）
+        function fetchEastMoneyData() {
+            return new Promise((resolve, reject) => {
+                // 闭市时尝试获取本地缓存数据
+                if (!checkMarketStatus()) {
+                    const cachedData = getFromLocalStorage(CONFIG.currentContract);
+                    if (cachedData) {
+                        resolve(cachedData.data);
+                        return;
+                    } else {
+                        resolve(CONFIG.contractConfig[CONFIG.currentContract].fallbackData);
+                        return;
+                    }
+                }
+
+                const secids = CONFIG.contracts.map(month => `1.${CONFIG.currentContract}${month}`).join(',');
+                const url = `https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&invt=2&fields=f2,f3,f10,f9&secid=${secids}&_=${Date.now()}`;
+                
+                const script = document.createElement('script');
+                script.src = `${url}&callback=handleEastMoneyData`;
+                script.async = true;
+
+                const timeoutTimer = setTimeout(() => {
+                    script.remove();
+                    CONFIG.sourceStatus.eastmoney = false;
+                    // 超时尝试使用缓存
+                    const cachedData = getFromLocalStorage(CONFIG.currentContract);
+                    if (cachedData) {
+                        resolve(cachedData.data);
+                    } else {
+                        resolve(CONFIG.contractConfig[CONFIG.currentContract].fallbackData);
+                    }
+                }, CONFIG.timeout);
+
+                window.handleEastMoneyData = function(res) {
+                    clearTimeout(timeoutTimer);
+                    script.remove();
+                    
+                    const result = {};
+                    let hasValidData = false;
+                    if (res.data?.diff && res.data.diff.length > 0) {
+                        res.data.diff.forEach(item => {
+                            const month = item.f13?.slice(-4) || '';
+                            if (month) {
+                                result[month] = {
+                                    price: parseFloat(item.f2) || 0,
+                                    change: parseFloat(item.f3) || 0,
+                                    openInterest: parseInt(item.f10) || 0,
+                                    volume: parseInt(item.f9) || 0
+                                };
+                                hasValidData = true;
+                            }
+                        });
+                    }
+
+                    // 有数据则保存到本地并返回
+                    if (hasValidData) {
+                        CONFIG.currentSource = 'eastmoney';
+                        showSourceTip(`当前数据源：东方财富（${CONFIG.currentContract}）`);
+                        saveToLocalStorage(CONFIG.currentContract, result);
+                        resolve(result);
+                    } else {
+                        // 无数据则尝试使用缓存
+                        const cachedData = getFromLocalStorage(CONFIG.currentContract);
+                        if (cachedData) {
+                            resolve(cachedData.data);
+                        } else {
+                            resolve(CONFIG.contractConfig[CONFIG.currentContract].fallbackData);
+                        }
+                    }
+                };
+
+                script.onerror = () => {
+                    clearTimeout(timeoutTimer);
+                    script.remove();
+                    CONFIG.sourceStatus.eastmoney = false;
+                    // 失败尝试使用缓存
+                    const cachedData = getFromLocalStorage(CONFIG.currentContract);
+                    if (cachedData) {
+                        resolve(cachedData.data);
+                    } else {
+                        resolve(CONFIG.contractConfig[CONFIG.currentContract].fallbackData);
+                    }
+                };
+                document.body.appendChild(script);
             });
-            // 更新最后刷新时间
-            updateTimeEl.textContent = `最后更新：${new Date().toLocaleString()}`;
         }
 
-        // 自动更新数据函数（实际使用时替换为真实接口请求）
-        function updateTableData() {
-            renderTable(currentActiveIndex); // 刷新当前激活标签页的数据
+        // 核心数据获取（主备切换+缓存+兜底）
+        async function fetchData() {
+            try {
+                let data;
+                if (CONFIG.sourceStatus.sina) {
+                    data = await fetchSinaData();
+                } else if (CONFIG.sourceStatus.eastmoney) {
+                    data = await fetchEastMoneyData();
+                } else {
+                    // 所有数据源不可用，尝试使用缓存
+                    const cachedData = getFromLocalStorage(CONFIG.currentContract);
+                    if (cachedData) {
+                        data = cachedData.data;
+                    } else {
+                        data = CONFIG.contractConfig[CONFIG.currentContract].fallbackData;
+                    }
+                }
+                return data;
+            } catch (err) {
+                console.error('数据获取异常：', err.message);
+                // 异常时尝试使用缓存
+                const cachedData = getFromLocalStorage(CONFIG.currentContract);
+                if (cachedData) {
+                    return cachedData.data;
+                }
+                return CONFIG.contractConfig[CONFIG.currentContract].fallbackData;
+            }
         }
+
+        // ========== 指标计算与页面更新 ==========
+        // 计算衍生指标
+        function calculateIndicators(rawData) {
+            const result = {};
+            const spotPrice = CONFIG.contractConfig[CONFIG.currentContract].spotPrice;
+            
+            CONFIG.contracts.forEach(month => {
+                const raw = rawData[month] || CONFIG.contractConfig[CONFIG.currentContract].fallbackData[month];
+                const daysLeft = calculateDaysLeft(month);
+                
+                // 基差 = 现货价 - 期货价
+                const basis = (spotPrice - raw.price).toFixed(2);
+                // 基差变化
+                const lastBasisKey = `${CONFIG.currentContract}_${month}`;
+                const lastBasis = CONFIG.lastBasisData[lastBasisKey] || basis;
+                const basisChange = (basis - lastBasis).toFixed(2);
+                // 年化基差
+                const annualBasis = daysLeft > 0 
+                    ? ((basis / spotPrice) * (365 / daysLeft) * 100).toFixed(2) + '%'
+                    : '0.00%';
+                // 日平均折价/年化每点折
+                const dailyDiscount = daysLeft > 0 ? (basis / daysLeft).toFixed(2) : 0;
+                const annualPointDiscount = daysLeft > 0 ? (dailyDiscount * 365 / 10).toFixed(2) : 0;
+
+                // 保存基差
+                CONFIG.lastBasisData[lastBasisKey] = parseFloat(basis);
+
+                result[month] = {
+                    ...raw,
+                    daysLeft,
+                    basis,
+                    basisChange,
+                    annualBasis,
+                    dailyDiscount,
+                    annualPointDiscount
+                };
+            });
+            return result;
+        }
+
+        // 更新页面
+        function updateTable(calcData) {
+            // 更新顶部时间
+            document.getElementById('updateTime').textContent = formatTime();
+            // 更新当前合约名称
+            document.getElementById('currentContract').textContent = CONFIG.currentContract;
+            
+            // 更新表格数据
+            CONFIG.contracts.forEach(month => {
+                const data = calcData[month] || {};
+                // 基础数据
+                document.getElementById(`price_${month}`).textContent = (data.price || 0).toFixed(1);
+                document.getElementById(`open_interest_${month}`).textContent = data.openInterest || 0;
+                document.getElementById(`volume_${month}`).textContent = data.volume || 0;
+                document.getElementById(`days_left_${month}`).textContent = data.daysLeft || 0;
+                
+                // 涨跌（颜色）
+                const changeEl = document.getElementById(`change_${month}`);
+                changeEl.textContent = (data.change || 0).toFixed(1);
+                changeEl.className = (data.change || 0) >= 0 ? 'rise' : 'fall';
+                
+                // 基差相关
+                const basisChangeEl = document.getElementById(`basis_change_${month}`);
+                basisChangeEl.textContent = data.basisChange || 0;
+                basisChangeEl.className = parseFloat(data.basisChange || 0) >= 0 ? 'rise' : 'fall';
+                
+                document.getElementById(`basis_${month}`).textContent = data.basis || 0;
+                document.getElementById(`annual_basis_${month}`).textContent = data.annualBasis || '0.00%';
+                document.getElementById(`daily_discount_${month}`).textContent = data.dailyDiscount || 0;
+                document.getElementById(`annual_point_discount_${month}`).textContent = data.annualPointDiscount || 0;
+            });
+
+            // 更新顶部总览（取2601合约）
+            const mainData = calcData['2601'] || {};
+            document.getElementById('totalChange').textContent = `+${(mainData.change || 0).toFixed(1)}`;
+            document.getElementById('totalPrice').textContent = (mainData.price || 0).toFixed(2);
+        }
+
+        // ========== 合约切换逻辑 ==========
+        function switchContract(contractCode) {
+            // 更新当前合约
+            CONFIG.currentContract = contractCode;
+            
+            // 更新标签状态
+            document.querySelectorAll('.tab-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.code === contractCode);
+            });
+            
+            // 立即加载新合约数据
+            fetchData().then(rawData => {
+                const calcData = calculateIndicators(rawData);
+                updateTable(calcData);
+            });
+        }
+
+        function initContractTabs() {
+            const tabItems = document.querySelectorAll('.tab-item');
+            
+            // 点击切换
+            tabItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    switchContract(item.dataset.code);
+                });
+                
+                // 键盘支持
+                item.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        switchContract(item.dataset.code);
+                    }
+                });
+            });
+        }
+
+        // ========== 开关功能初始化 ==========
+        function initSwitches() {
+            // 开关1：相对基差指示
+            document.getElementById('switch1').addEventListener('click', function() {
+                this.classList.toggle('active');
+                // 这里可以添加相对基差指示的逻辑
+                showSourceTip(`相对基差指示：${this.classList.contains('active') ? '开启' : '关闭'}`);
+            });
+            
+            // 开关2：换月辅助计算
+            document.getElementById('switch2').addEventListener('click', function() {
+                this.classList.toggle('active');
+                // 这里可以添加换月辅助计算的逻辑
+                showSourceTip(`换月辅助计算：${this.classList.contains('active') ? '开启' : '关闭'}`);
+            });
+            
+            // 开关3：快速刷新
+            document.getElementById('switch3').addEventListener('click', function() {
+                this.classList.toggle('active');
+                // 调整刷新频率
+                CONFIG.refreshInterval = this.classList.contains('active') ? 1000 : 2000;
+                restartRefreshTimer();
+                showSourceTip(`快速刷新：${this.classList.contains('active') ? '开启' : '关闭'}`);
+            });
+        }
+
+        // ========== 底部按钮功能 ==========
+        function initButtons() {
+            // 自动获取按钮
+            document.querySelector('.btn.auto').addEventListener('click', function() {
+                showSourceTip('已启用自动获取模式');
+                restartRefreshTimer();
+            });
+            
+            // 手动输入按钮
+            document.querySelector('.btn.manual').addEventListener('click', function() {
+                showSourceTip('手动输入功能待实现');
+                // 这里可以添加手动输入的逻辑
+            });
+            
+            // 更新记录按钮
+            document.querySelector('.btn.record').addEventListener('click', function() {
+                showSourceTip('更新记录功能待实现');
+                // 这里可以添加更新记录的逻辑
+            });
+        }
+
+        // ========== 刷新定时器控制 ==========
+        function startRefreshTimer() {
+            stopRefreshTimer();
+            CONFIG.refreshTimer = setInterval(async () => {
+                const rawData = await fetchData();
+                const calcData = calculateIndicators(rawData);
+                updateTable(calcData);
+            }, CONFIG.refreshInterval);
+        }
+
+        function stopRefreshTimer() {
+            if (CONFIG.refreshTimer) {
+                clearInterval(CONFIG.refreshTimer);
+                CONFIG.refreshTimer = null;
+            }
+        }
+
+        function restartRefreshTimer() {
+            stopRefreshTimer();
+            startRefreshTimer();
+        }
+
+        // ========== 初始化应用 ==========
+        function initApp() {
+            // 初始化各组件
+            initContractTabs();
+            initSwitches();
+            initButtons();
+            
+            // 检查市场状态
+            checkMarketStatus();
+            
+            // 首次加载数据
+            fetchData().then(rawData => {
+                const calcData = calculateIndicators(rawData);
+                updateTable(calcData);
+                
+                // 启动刷新定时器
+                startRefreshTimer();
+            });
+        }
+
+        // 启动应用
+        window.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
