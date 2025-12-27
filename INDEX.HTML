@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的项目汇总</title>
+    <style>
+        body { font-family: Microsoft Yahei; margin: 40px; }
+        h1 { color: #2c3e50; }
+        .project { margin: 20px 0; padding: 15px; border: 1px solid #eee; border-radius: 8px; }
+        a { color: #3498db; text-decoration: none; font-size: 16px; }
+        a:hover { color: #2980b9; text-decoration: underline; }
+        .tip { color: #7f8c8d; font-size: 14px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h1>我的项目列表</h1>
+    
+    <!-- 静态网页项目：可直接跳转访问 -->
+    <div class="project">
+        <a href="期货监控/">股指期货基差监控（静态网页）</a>
+        <p class="tip">点击直接访问运行中的静态网页</p>
+    </div>
+
+    <!-- Python文件：只能提供下载链接 -->
+    <div class="project">
+        <a href="期货监控PY/jiankong.py" download>期货监控Python程序（jiankong.py）- 点击下载</a>
+        <p class="tip">GitHub Pages不支持在线运行Python，可下载到本地运行</p>
+    </div>
+
+    <!-- 其他文件：同理提供下载链接 -->
+    <div class="project">
+        <a href="期货监控PY/requirements.txt" download>Python依赖文件（requirements.txt）- 点击下载</a>
+    </div>
+</body>
+</html>
